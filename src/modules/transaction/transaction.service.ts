@@ -61,7 +61,6 @@ export class TransactionService {
     await this.findOne(id).catch((error) => {
       throw new NotFoundException(
         `Transaction with id ${id} not found: ${error.message}`,
-        ß,
       );
     });
 

@@ -6,7 +6,7 @@ import { PrismaService } from 'src/modules/prisma/prisma.service';
 @Injectable()
 export class TransactionService {
   constructor(private readonly prisma: PrismaService) {}
-  
+
   async create({ category, data, price, title, type }: CreateTransactionDto) {
     const createdTransaction = await this.prisma.transaction.create({
       data: {
@@ -31,12 +31,12 @@ export class TransactionService {
     if (!transaction) {
       throw new NotFoundException(`Transaction with id ${id} not found`);
     }
-    return transaction;;
+    return transaction;
   }
 
   async update(id: string, updateTransactionDto: UpdateTransactionDto) {
-    await this.findOne(id); 
-    
+    await this.findOne(id);
+
     return this.prisma.transaction.update({
       where: { id },
       data: updateTransactionDto,
@@ -44,8 +44,8 @@ export class TransactionService {
   }
 
   async remove(id: string) {
-    await this.findOne(id); 
-    
+    await this.findOne(id);
+
     await this.prisma.transaction.delete({
       where: { id },
     });

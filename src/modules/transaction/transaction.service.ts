@@ -21,7 +21,17 @@ export class TransactionService {
   }
 
   async findAll() {
-    return await this.prisma.transaction.findMany();
+    transactions = await this.prisma.transaction.findMany().catch((error) => {
+      throw new InternalServerErrorException(
+        'Error fetching transactions: ' + error.message,
+      );
+    });
+
+    if (!transactions || transactions.length === 0) {
+      throw new NotFoundException('No transactions found');
+    }
+
+    return transactions;
   }
 
   async findOne(id: string) {
@@ -35,7 +45,11 @@ export class TransactionService {
   }
 
   async update(id: string, updateTransactionDto: UpdateTransactionDto) {
-    await this.findOne(id);
+    await this.findOne(id).catch((error) => {
+      throw new NotFoundException(
+        `Transaction with id ${id} not found: ${error.message}`,
+      );
+    });
 
     return this.prisma.transaction.update({
       where: { id },
@@ -44,7 +58,12 @@ export class TransactionService {
   }
 
   async remove(id: string) {
-    await this.findOne(id);
+    await this.findOne(id).catch((error) => {
+      throw new NotFoundException(
+        `Transaction with id ${id} not found: ${error.message}`,
+        ß,
+      );
+    });
 
     await this.prisma.transaction.delete({
       where: { id },

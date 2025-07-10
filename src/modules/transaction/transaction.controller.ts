@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   Res,
+  Query,
 } from '@nestjs/common';
 import { TransactionService } from './transaction.service';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
@@ -28,9 +29,17 @@ export class TransactionController {
     return;
   }
 
+  @Get('aggregated')
+  async aggregated() {
+    return this.transactionService.getAggregated();
+  }
+
   @Get()
-  findAll() {
-    return this.transactionService.findAll();
+  findAll(@Query('skip') skip?: string, @Query('take') take?: string) {
+    const skipNumber = skip ? parseInt(skip, 10) : 0;
+    const takeNumber = take ? parseInt(take, 10) : 10;
+
+    return this.transactionService.findAll(skipNumber, takeNumber);
   }
 
   @Get(':id')

@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { PrismaService } from 'src/modules/prisma/prisma.service';
@@ -20,18 +24,53 @@ export class TransactionService {
     return createdTransaction;
   }
 
-  async findAll() {
-    transactions = await this.prisma.transaction.findMany().catch((error) => {
+  async getAggregated() {
+    try {
+      const [incomeTotal, outcomeTotal, totalTransactions] = await Promise.all([
+        // Soma total de transações do tipo INCOME
+        this.prisma.transaction.aggregate({
+          where: { type: 'INCOME' },
+          _sum: { price: true },
+        }),
+        // Soma total de transações do tipo OUTCOME
+        this.prisma.transaction.aggregate({
+          where: { type: 'OUTCOME' },
+          _sum: { price: true },
+        }),
+        // Contagem total de transações
+        this.prisma.transaction.count(),
+      ]);
+
+      return {
+        totalIncome: incomeTotal._sum.price || 0,
+        totalOutcome: outcomeTotal._sum.price || 0,
+        totalTransactions: totalTransactions,
+      };
+    } catch (error) {
       throw new InternalServerErrorException(
-        'Error fetching transactions: ' + error.message,
+        'Error fetching transaction aggregates: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
       );
-    });
-
-    if (!transactions || transactions.length === 0) {
-      throw new NotFoundException('No transactions found');
     }
+  }
 
-    return transactions;
+  async findAll(skip: number = 0, take: number = 10) {
+    try {
+      const transactions = await this.prisma.transaction.findMany({
+        skip,
+        take,
+      });
+
+      return transactions;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
+      throw new InternalServerErrorException(
+        'Error fetching transactions: ' +
+          (error instanceof Error ? error.message : 'Unknown error'),
+      );
+    }
   }
 
   async findOne(id: string) {
@@ -45,11 +84,16 @@ export class TransactionService {
   }
 
   async update(id: string, updateTransactionDto: UpdateTransactionDto) {
-    await this.findOne(id).catch((error) => {
+    try {
+      await this.findOne(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new NotFoundException(
-        `Transaction with id ${id} not found: ${error.message}`,
+        `Transaction with id ${id} not found: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
-    });
+    }
 
     return this.prisma.transaction.update({
       where: { id },
@@ -58,11 +102,16 @@ export class TransactionService {
   }
 
   async remove(id: string) {
-    await this.findOne(id).catch((error) => {
+    try {
+      await this.findOne(id);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        throw error;
+      }
       throw new NotFoundException(
-        `Transaction with id ${id} not found: ${error.message}`,
+        `Transaction with id ${id} not found: ${error instanceof Error ? error.message : 'Unknown error'}`,
       );
-    });
+    }
 
     await this.prisma.transaction.delete({
       where: { id },
